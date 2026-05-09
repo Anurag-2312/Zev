@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Zev - AI Chatbot",
+  title: "Zev",
   description: "A simple AI chatbot built with Next.js",
 };
 
