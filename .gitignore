@@ -1,0 +1,11 @@
+/node_modules
+/coverage
+/.next/
+/out/
+.DS_Store
+*.pem
+npm-debug.log*
+.env*
+v1_chatbot_project_plan.docx
+AGENTS.md
+CLAUDE.md
