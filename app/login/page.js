@@ -14,7 +14,7 @@ function LoginForm() {
   const [error, setError] = useState(() =>
     searchParams.get("error") === "auth"
       ? "That link is invalid or has expired. Please try again."
-      : null
+      : null,
   );
   const [loading, setLoading] = useState(false);
 
@@ -60,7 +60,7 @@ function LoginForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="Enter your Email here"
               className="h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm outline-none focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-100"
             />
           </label>
@@ -97,10 +97,16 @@ function LoginForm() {
         </form>
 
         <div className="mt-6 flex justify-between text-sm">
-          <Link href="/signup" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+          <Link
+            href="/signup"
+            className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
             Need an account? Sign up
           </Link>
-          <Link href="/chat" className="inline-flex items-center gap-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+          <Link
+            href="/chat"
+            className="inline-flex items-center gap-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
             Skip <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
