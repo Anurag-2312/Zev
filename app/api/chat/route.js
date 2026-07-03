@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { streamChat, generateTitle } from "@/lib/ai";
 import { webSearch, buildSearchSystemMessage } from "@/lib/search";
 import {
@@ -171,47 +172,54 @@ export async function POST(request) {
         clearTimeout(timeout);
         request.signal.removeEventListener("abort", onClientAbort);
       }
-
-      if (chatUsage?.total_tokens) {
-        await addTokensUsed(user.id, chatUsage.total_tokens);
-      }
-
-      if (fullAssistantContent) {
-        try {
-          await saveMessage(conversationId, "user", lastUserContent);
-          await saveMessage(
-            conversationId,
-            "assistant",
-            fullAssistantContent,
-            searchPayload
-          );
-          await touchConversation(conversationId);
-        } catch (err) {
-          console.error("[/api/chat] persistence error:", err);
-        }
-
-        if (isNewConversation) {
-          try {
-            const { title, usage: titleUsage } = await generateTitle(
-              lastUserContent,
-              fullAssistantContent
-            );
-            await updateTitle(conversationId, title);
-            if (titleUsage?.total_tokens) {
-              await addTokensUsed(user.id, titleUsage.total_tokens);
-            }
-          } catch (err) {
-            console.error("[/api/chat] title gen failed:", err);
-          }
-        }
-      } else if (isNewConversation) {
-        try {
-          await deleteConversation(conversationId);
-        } catch (err) {
-          console.error("[/api/chat] cleanup failed:", err);
-        }
-      }
     },
+  });
+
+  // Persist after the response finishes. This work previously ran after
+  // controller.close() inside start(), but on Vercel the function is
+  // suspended once the stream closes, so those awaits were dropped on cold
+  // containers and chat history was silently lost. after() keeps the
+  // invocation alive until the writes complete.
+  after(async () => {
+    if (chatUsage?.total_tokens) {
+      await addTokensUsed(user.id, chatUsage.total_tokens);
+    }
+
+    if (fullAssistantContent) {
+      try {
+        await saveMessage(conversationId, "user", lastUserContent);
+        await saveMessage(
+          conversationId,
+          "assistant",
+          fullAssistantContent,
+          searchPayload
+        );
+        await touchConversation(conversationId);
+      } catch (err) {
+        console.error("[/api/chat] persistence error:", err);
+      }
+
+      if (isNewConversation) {
+        try {
+          const { title, usage: titleUsage } = await generateTitle(
+            lastUserContent,
+            fullAssistantContent
+          );
+          await updateTitle(conversationId, title);
+          if (titleUsage?.total_tokens) {
+            await addTokensUsed(user.id, titleUsage.total_tokens);
+          }
+        } catch (err) {
+          console.error("[/api/chat] title gen failed:", err);
+        }
+      }
+    } else if (isNewConversation) {
+      try {
+        await deleteConversation(conversationId);
+      } catch (err) {
+        console.error("[/api/chat] cleanup failed:", err);
+      }
+    }
   });
 
   const responseHeaders = {
