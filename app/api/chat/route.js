@@ -7,14 +7,14 @@ import {
   addTokensUsed,
   DAILY_TOKEN_BUDGET,
 } from "@/lib/ratelimit";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import {
   createConversation,
   getConversation,
   saveMessage,
   touchConversation,
   updateTitle,
-  deleteConversation,
+  deleteConversationById,
 } from "@/lib/db";
 
 export const maxDuration = 60;
@@ -30,11 +30,9 @@ export async function POST(request) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) {
     return Response.json(
       { error: "Please log in to chat." },
       { status: 401 }
@@ -104,8 +102,8 @@ export async function POST(request) {
   let isNewConversation = false;
 
   if (conversationId) {
-    const conv = await getConversation(conversationId);
-    if (!conv || conv.user_id !== user.id) {
+    const conv = await getConversation(user.id, conversationId);
+    if (!conv) {
       return Response.json(
         { error: "Conversation not found" },
         { status: 404 }
@@ -215,7 +213,7 @@ export async function POST(request) {
       }
     } else if (isNewConversation) {
       try {
-        await deleteConversation(conversationId);
+        await deleteConversationById(conversationId);
       } catch (err) {
         console.error("[/api/chat] cleanup failed:", err);
       }

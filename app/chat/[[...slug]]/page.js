@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import ChatLayout from "@/components/ChatLayout";
 import MessageList from "@/components/MessageList";
 import ChatInput from "@/components/ChatInput";
@@ -20,28 +21,35 @@ function decodeSourcesHeader(headerValue) {
   }
 }
 
+function conversationIdFromPathname(pathname) {
+  const match = /^\/chat\/([^/]+)\/?$/.exec(pathname ?? "");
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export default function ChatPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const routeConversationId = conversationIdFromPathname(pathname);
+
   const [messages, setMessages] = useState([]);
   const [searchEnabled, setSearchEnabled] = useState(false);
   const [sending, setSending] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(null);
+  const { status } = useSession();
+  // null while the session is still loading, matching the previous tri-state.
+  const isAuthed = status === "loading" ? null : status === "authenticated";
   const [conversations, setConversations] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
+  // Seeded from the URL so a reload reopens the same conversation. Kept in
+  // state as well as the URL because the mid-stream case below updates the URL
+  // through the history API, which must not trigger a navigation.
+  const [activeConversationId, setActiveConversationId] =
+    useState(routeConversationId);
   const justCreatedRef = useRef(null);
   const abortControllerRef = useRef(null);
 
+  // Follows sidebar navigation and the browser back button.
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setIsAuthed(!!data.user))
-      .catch(() => setIsAuthed(false));
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthed(!!session?.user);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    setActiveConversationId(routeConversationId);
+  }, [routeConversationId]);
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -102,11 +110,13 @@ export default function ChatPage() {
   function handleNewChat() {
     setActiveConversationId(null);
     setMessages([]);
+    router.push("/chat");
   }
 
   function handleSelectConversation(id) {
     if (sending) return;
     setActiveConversationId(id);
+    router.push(`/chat/${id}`);
   }
 
   async function handleDeleteConversation(id) {
@@ -114,6 +124,7 @@ export default function ChatPage() {
     if (activeConversationId === id) {
       setActiveConversationId(null);
       setMessages([]);
+      router.push("/chat");
     }
 
     try {
@@ -193,6 +204,10 @@ export default function ChatPage() {
       if (newConvId && newConvId !== activeConversationId) {
         justCreatedRef.current = newConvId;
         setActiveConversationId(newConvId);
+        // router.push would remount this component and kill the stream still
+        // being read below, so the URL is updated without a navigation.
+        // replace rather than push: back should not land on an empty /chat.
+        window.history.replaceState(null, "", `/chat/${newConvId}`);
       }
 
       const sourcesHeader = res.headers.get("X-Search-Sources");

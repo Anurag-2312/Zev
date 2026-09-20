@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { Plus, LogOut, Trash2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function Sidebar({
   open,
@@ -15,8 +14,8 @@ export default function Sidebar({
   onNewChat,
   onDeleteConversation,
 }) {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { data: session } = useSession();
+  const user = session?.user ?? null;
   const [confirmingDelete, setConfirmingDelete] = useState(null);
 
   useEffect(() => {
@@ -27,21 +26,6 @@ export default function Sidebar({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmingDelete]);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setUser(data.user))
-      .catch(() => setUser(null));
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => sub.subscription.unsubscribe();
-  }, []);
 
   function handleDelete(conv) {
     setConfirmingDelete(conv);
@@ -56,11 +40,7 @@ export default function Sidebar({
 
   async function handleLogout() {
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signOut();
-      if (error) return;
-      router.push("/");
-      router.refresh();
+      await signOut({ redirectTo: "/" });
     } catch {
       // network error — user stays signed in and can retry
     }
@@ -158,13 +138,6 @@ export default function Sidebar({
                     className="text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
                   >
                     Log in
-                  </Link>
-                  <span className="text-zinc-400">·</span>
-                  <Link
-                    href="/signup"
-                    className="text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
-                  >
-                    Sign up
                   </Link>
                 </div>
               </div>

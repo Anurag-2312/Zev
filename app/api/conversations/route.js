@@ -1,17 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { listConversations } from "@/lib/db";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const conversations = await listConversations();
+    const conversations = await listConversations(session.user.id);
     return Response.json({ conversations });
   } catch (err) {
     console.error("[/api/conversations] error:", err);
