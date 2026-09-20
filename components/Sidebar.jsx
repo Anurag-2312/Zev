@@ -9,13 +9,17 @@ export default function Sidebar({
   open,
   onClose,
   conversations = [],
+  conversationsLoaded = false,
   activeConversationId,
   onSelectConversation,
   onNewChat,
   onDeleteConversation,
 }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const user = session?.user ?? null;
+  // Either the session or the first conversations fetch is still outstanding,
+  // so neither empty state below would be true yet.
+  const pending = status === "loading" || (user && !conversationsLoaded);
   const [confirmingDelete, setConfirmingDelete] = useState(null);
 
   useEffect(() => {
@@ -73,7 +77,7 @@ export default function Sidebar({
           </div>
 
           <nav className="flex-1 overflow-y-auto p-2">
-            {!user ? (
+            {pending ? null : !user ? (
               <div className="px-3 py-2 text-sm text-zinc-500">
                 Log in to save your chats.
               </div>
@@ -115,7 +119,7 @@ export default function Sidebar({
           </nav>
 
           <div className="p-3 border-t border-zinc-100 dark:border-zinc-900">
-            {user ? (
+            {status === "loading" ? null : user ? (
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-xs text-zinc-500">Signed in as</div>

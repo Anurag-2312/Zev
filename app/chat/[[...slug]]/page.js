@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ChatLayout from "@/components/ChatLayout";
 import MessageList from "@/components/MessageList";
@@ -27,7 +27,6 @@ function conversationIdFromPathname(pathname) {
 }
 
 export default function ChatPage() {
-  const router = useRouter();
   const pathname = usePathname();
   const routeConversationId = conversationIdFromPathname(pathname);
 
@@ -38,6 +37,9 @@ export default function ChatPage() {
   // null while the session is still loading, matching the previous tri-state.
   const isAuthed = status === "loading" ? null : status === "authenticated";
   const [conversations, setConversations] = useState([]);
+  // Distinguishes "no conversations" from "not fetched yet" so the sidebar
+  // does not show an empty state before the first fetch lands.
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   // Seeded from the URL so a reload reopens the same conversation. Kept in
   // state as well as the URL because the mid-stream case below updates the URL
   // through the history API, which must not trigger a navigation.
@@ -59,6 +61,8 @@ export default function ChatPage() {
       setConversations(data.conversations ?? []);
     } catch {
       // network blip — sidebar keeps last-known state
+    } finally {
+      setConversationsLoaded(true);
     }
   }, []);
 
@@ -67,6 +71,7 @@ export default function ChatPage() {
       refreshConversations();
     } else if (isAuthed === false) {
       setConversations([]);
+      setConversationsLoaded(true);
       setActiveConversationId(null);
       setMessages([]);
     }
@@ -107,16 +112,19 @@ export default function ChatPage() {
     };
   }, [activeConversationId]);
 
+  // Selection uses the history API rather than router.push: a Next navigation
+  // remounts this component, which refetches the sidebar and makes switching
+  // chats look like a page reload. pushState updates the URL without one.
   function handleNewChat() {
     setActiveConversationId(null);
     setMessages([]);
-    router.push("/chat");
+    window.history.pushState(null, "", "/chat");
   }
 
   function handleSelectConversation(id) {
     if (sending) return;
     setActiveConversationId(id);
-    router.push(`/chat/${id}`);
+    window.history.pushState(null, "", `/chat/${id}`);
   }
 
   async function handleDeleteConversation(id) {
@@ -124,7 +132,7 @@ export default function ChatPage() {
     if (activeConversationId === id) {
       setActiveConversationId(null);
       setMessages([]);
-      router.push("/chat");
+      window.history.pushState(null, "", "/chat");
     }
 
     try {
@@ -268,6 +276,7 @@ export default function ChatPage() {
         <SearchToggle enabled={searchEnabled} onToggle={setSearchEnabled} />
       }
       conversations={conversations}
+      conversationsLoaded={conversationsLoaded}
       activeConversationId={activeConversationId}
       onSelectConversation={handleSelectConversation}
       onNewChat={handleNewChat}

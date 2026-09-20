@@ -8,6 +8,7 @@ export default function ChatLayout({
   children,
   headerRight,
   conversations = [],
+  conversationsLoaded = false,
   activeConversationId,
   onSelectConversation,
   onNewChat,
@@ -35,6 +36,7 @@ export default function ChatLayout({
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         conversations={conversations}
+        conversationsLoaded={conversationsLoaded}
         activeConversationId={activeConversationId}
         onSelectConversation={onSelectConversation}
         onNewChat={onNewChat}
