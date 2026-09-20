@@ -19,12 +19,6 @@ export default function Home() {
             Log in
           </Link>
           <Link
-            href="/signup"
-            className="h-11 inline-flex items-center justify-center rounded-lg border border-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-          >
-            Sign up
-          </Link>
-          <Link
             href="/chat"
             className="h-11 inline-flex items-center justify-center text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           >
